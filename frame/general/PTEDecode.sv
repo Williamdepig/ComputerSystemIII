@@ -3,7 +3,7 @@
 module PTEDecode(
     input [63:0] pte,
     output PageStruct::PTEPack pte_pack
-)
+);
 
     assign pte_pack.v = pte[0];
     assign pte_pack.r = pte[1];
@@ -14,6 +14,6 @@ module PTEDecode(
     assign pte_pack.a = pte[6];
     assign pte_pack.d = pte[7];
     assign pte_pack.rsw = pte[9:8];
-    assign pte_pack.ppn = pte[53:10] << 12;
+    assign pte_pack.ppn = {{8{1'b0}},pte[53:10],{12{1'b0}}};
 
 endmodule

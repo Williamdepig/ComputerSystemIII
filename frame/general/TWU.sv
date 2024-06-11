@@ -8,7 +8,7 @@ module TWU #(
     input clk,
     input rstn,
 
-    input  [ADDR_WIDTH-1:0] va_from_core, // virtual address from core
+    input  [ADDR_WIDTH-1:0] va,
     input                   request,
     input  [ADDR_WIDTH-1:0] ppn_base,
 
@@ -18,9 +18,8 @@ module TWU #(
     output                  ren_to_cache,
     output [ADDR_WIDTH-1:0] pa_to_cache,
 
-    output [ADDR_WIDTH-1:0] pa_to_core,
-    output                  finish,
-    output                  hit
+    output [ADDR_WIDTH-1:0] pte,
+    output                  finish
 
 );
 
@@ -46,6 +45,10 @@ module TWU #(
     addr_t vpn1;
     addr_t vpn0;
     addr_t offset;
+    addr_t _pte;
+
+    logic _ren;
+    logic _finish;
 
     always @(posedge clk or negedge rstn) begin
         if (~rstn) begin
@@ -57,25 +60,21 @@ module TWU #(
     end
 
     always @(*) begin
-
         case(state)
             IDLE: begin
                 next_state = request ? L2 : IDLE;
-                pa_temp = (ppn_base << 12) | vpn2;
             end
             L2: begin
                 next_state = stall_from_cache ? L2 :
                              ~pte_pack.v ? IDLE :
                              pte_pack.r|pte_pack.w|pte_pack.x ? IDLE :
                              L1;
-                pa_temp = pte_pack.ppn | vpn1;
             end
             L1: begin
                 next_state = stall_from_cache ? L1 :
                              ~pte_pack.v ? IDLE :
                              pte_pack.r|pte_pack.w|pte_pack.x ? IDLE :
                              L0;
-                pa_temp = pte_pack.ppn | vpn0;
             end
             L0: begin
                 next_state = stall_from_cache ? L0 :
@@ -83,22 +82,62 @@ module TWU #(
             end
             default: begin
                 next_state = IDLE;
-                pa_temp = {ADDR_WIDTH{1'b0}};
             end
         endcase
+    end
+
+    always @(posedge clk)begin
+
+        if(~rstn)begin
+            pa_temp <=0;
+            _finish <= 0;
+            _ren <= 0;
+            _pte <= 0;
+        end
+        else begin
+            case(state) 
+                IDLE: begin
+                    _ren <= next_state != IDLE ? 1 : 0;
+                    _finish <= 0;
+                    pa_temp <= next_state == L2 ? ((ppn_base << 12) | vpn2) : 0;
+                    _pte <= 0;
+                end
+                L2: begin
+                    _ren <= next_state == IDLE ? 0 : 1;
+                    _finish <= next_state == IDLE ? 1 : 0;
+                    pa_temp <= next_state == L1 ? (pte_pack.ppn | vpn1) : pa_temp;
+                    _pte <= next_state == IDLE ? pte_from_cache : _pte;
+                end
+                L1: begin
+                    _ren <= next_state == IDLE ? 0 : 1;
+                    _finish <= next_state == IDLE ? 1 : 0;
+                    pa_temp <= next_state == L0 ? (pte_pack.ppn | vpn0) : pa_temp;
+                    _pte <= next_state == IDLE ? pte_from_cache : _pte;
+                end
+                L0: begin
+                    _ren <= next_state == IDLE ? 0 : 1;
+                    _finish <= next_state == IDLE ? 1 : 0; 
+                    pa_temp <= pa_temp;
+                    _pte <= next_state == IDLE ? pte_from_cache : _pte;
+                end
+                default: begin
+
+                end
+            endcase
+        end
 
     end
 
-assign vpn2 = va_from_core[38:30] << 3;
-assign vpn1 = va_from_core[29:21] << 3;
-assign vpn0 = va_from_core[20:12] << 3;
-assign offset = va_from_core[11:0];
+
+assign vpn2 = {{52{1'b0}},va[38:30],{3{1'b0}}};
+assign vpn1 = {{52{1'b0}},va[29:21],{3{1'b0}}};
+assign vpn0 = {{52{1'b0}},va[20:12],{3{1'b0}}};
+assign offset = {{52{1'b0}},va[11:0]};
 
 assign pa_to_cache = pa_temp;
-assign ren_to_cache = (next_state != IDLE);
+assign ren_to_cache = _ren;
 
-assign pa_to_core = pte_pack.ppn | offset;
-assign finish = (state != IDLE) & (next_state == IDLE);
-assign hit = pte_pack.v & (pte_pack.r | pte_pack.w | pte_pack.x);
+assign pte = _pte;
+assign finish = _finish;
 
 endmodule

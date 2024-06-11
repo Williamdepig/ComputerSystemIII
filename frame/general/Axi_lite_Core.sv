@@ -46,31 +46,43 @@ module Axi_lite_Core #(
     wire [63:0] wdata_cpu;
     wire [ 7:0] wmask_cpu;
     wire [31:0] inst;
-    wire [63:0] rdata_cpu;
+    wire [31:0] inst_to_cpu;
+    wire [63:0] rdata_to_cpu;
+    wire [63:0] rdata_to_mmu;
     wire        if_stall;
     wire        mem_stall;
+    wire        if_stall_to_cpu;
+    wire        mem_stall_to_cpu;
     wire        if_request;
 
     wire        clk = mem_ift.clk;
     wire        rstn = mem_ift.rstn;
     wire        switch_mode;
 
+    wire        if_mmu_to_cache;
+    wire        wen_mmu;
+    wire        ren_mmu;
+    wire [63:0] wdata_mmu;
+    wire [ 7:0] wmask_mmu;
+    wire [63:0] pc_phy;
+    wire [63:0] addr_phy;
+
     Core core (
         .clk        (clk),
         .rstn       (rstn),
         .time_out   (time_out),
         .pc         (pc),
-        .inst       (inst),
+        .inst       (inst_to_cpu),
         .address    (address_cpu),
         .we_mem     (wen_cpu),
         .wdata_mem  (wdata_cpu),
         .wmask_mem  (wmask_cpu),
         .re_mem     (ren_cpu),
-        .rdata_mem  (rdata_cpu),
+        .rdata_mem  (rdata_to_cpu),
         .if_request (if_request),
         .switch_mode(switch_mode),
-        .if_stall   (if_stall),
-        .mem_stall  (mem_stall),
+        .if_stall   (if_stall_to_cpu),
+        .mem_stall  (mem_stall_to_cpu),
 
         .cosim_valid    (cosim_valid),
         .cosim_pc       (cosim_pc),
@@ -95,6 +107,41 @@ module Axi_lite_Core #(
         .cosim_cause    (cosim_cause)
     );
 
+    MMU mmu(
+        .clk(clk),
+        .rstn(rstn),
+        .fresh(0),
+
+        .satp(cosim_csr_info.satp),
+        .pc_vir(pc),
+        .addr_vir(address_cpu),
+        .if_request(if_request),
+        .wen_cpu(wen_cpu),
+        .ren_cpu(ren_cpu),
+        .wdata_cpu(wdata_cpu),
+        .wmask_cpu(wmask_cpu),
+
+        .if_stall_to_cpu(if_stall_to_cpu),
+        .mem_stall_to_cpu(mem_stall_to_cpu),
+        .rdata_to_cpu(rdata_to_cpu),
+        .inst(inst_to_cpu),
+
+        .if_mmu(if_mmu_to_cache),
+        .wen_mmu(wen_mmu),
+        .ren_mmu(ren_mmu),
+        .wdata_mmu(wdata_mmu),
+        .wmask_mmu(wmask_mmu),
+
+        .if_stall_from_cache(if_stall),
+        .mem_stall_from_cache(mem_stall),
+
+        .pc_phy(pc_phy),
+        .addr_phy(addr_phy),
+
+        .rdata_from_cache(rdata_to_mmu),
+        .inst_from_cache(inst)
+    );
+
     Mem_ift #(
         .ADDR_WIDTH(C_M_AXI_ADDR_WIDTH),
         .DATA_WIDTH(C_M_AXI_MEM_DATA_WIDTH)
@@ -107,8 +154,8 @@ module Axi_lite_Core #(
     ) icache (
         .clk        (clk),
         .rstn       (rstn),
-        .pc         (pc),
-        .if_request (if_request),
+        .pc         (pc_phy),
+        .if_request (if_mmu_to_cache),
         .inst       (inst),
         .if_stall   (if_stall),
         .switch_mode(switch_mode),
@@ -132,11 +179,11 @@ module Axi_lite_Core #(
     ) dcache (
         .clk        (clk),
         .rstn       (rstn),
-        .addr_cpu   (address_cpu),
+        .addr_cpu   (addr_phy),
         .wen_cpu    (wen_cpu_to_mem),
         .ren_cpu    (ren_cpu_to_mem),
-        .wdata_cpu  (wdata_cpu),
-        .wmask_cpu  (wmask_cpu),
+        .wdata_cpu  (wdata_mmu),
+        .wmask_cpu  (wmask_mmu),
         .rdata_cpu  (rdata_cpu_from_mem),
         .switch_mode(switch_mode),
         .data_stall (mem_stall_from_mem),
@@ -153,22 +200,22 @@ module Axi_lite_Core #(
         .DATA_WIDTH(C_M_AXI_DATA_WIDTH)
     ) mmio_info ();
     Core2MMIO_FSM mmio_fsm (
-        .address_cpu(address_cpu),
+        .address_cpu(addr_phy),
         .wen_cpu    (wen_cpu_to_mmio),
         .ren_cpu    (ren_cpu_to_mmio),
-        .wdata_cpu  (wdata_cpu),
-        .wmask_cpu  (wmask_cpu),
+        .wdata_cpu  (wdata_mmu),
+        .wmask_cpu  (wmask_mmu),
         .rdata_cpu  (rdata_cpu_from_mmio),
         .mem_stall  (mem_stall_from_mmio),
         .mem_ift    (mmio_info.Master)
     );
 
     CrossBar crossbar (
-        .wen_cpu            (wen_cpu),
-        .ren_cpu            (ren_cpu),
+        .wen_cpu            (wen_mmu),
+        .ren_cpu            (ren_mmu),
         .mem_stall          (mem_stall),
-        .rdata_cpu          (rdata_cpu),
-        .address_cpu        (address_cpu),
+        .rdata_cpu          (rdata_to_mmu),
+        .address_cpu        (addr_phy),
         .wen_cpu_to_mem     (wen_cpu_to_mem),
         .ren_cpu_to_mem     (ren_cpu_to_mem),
         .mem_stall_from_mem (mem_stall_from_mem),
