@@ -1,8 +1,8 @@
 `include "PageStruct.vh"
 
 module TWU #(
-    parameter integer ADDR_WIDTH = 64,
-
+    parameter ADDR_WIDTH = 64,
+    parameter STATE_NUM = 4
 )
 (
     input clk,
@@ -13,10 +13,10 @@ module TWU #(
     input  [ADDR_WIDTH-1:0] ppn_base,
 
     input  [ADDR_WIDTH-1:0] pte_from_cache,
-    input                   stall_cache,
+    input                   stall_from_cache,
 
-    output                  ren_mmu_to_cache,
-    output [ADDR_WIDTH-1:0] pa_mmu_to_cache,
+    output                  ren_to_cache,
+    output [ADDR_WIDTH-1:0] pa_to_cache,
 
     output [ADDR_WIDTH-1:0] pa_to_core,
     output                  finish,
@@ -28,6 +28,9 @@ module TWU #(
     localparam L2   = 4'b0010;
     localparam L1   = 4'b0100;
     localparam L0   = 4'b1000;
+    typedef logic[STATE_NUM-1:0] state_t;
+    typedef logic[ADDR_WIDTH-1:0] addr_t;
+
 
     PageStruct::PTEPack pte_pack;
     PTEDecode pte_decode (
@@ -35,13 +38,14 @@ module TWU #(
         .pte_pack(pte_pack)
     );
 
-    logic [3:0]state;
-    logic [3:0]next_state;
-    logic [ADDR_WIDTH-1:0]pa_temp;
-    logic [ADDR_WIDTH-1:0]vpn2;
-    logic [ADDR_WIDTH-1:0]vpn1;
-    logic [ADDR_WIDTH-1:0]vpn0;
-    logic [ADDR_WIDTH-1:0]offset;
+    state_t state;
+    state_t next_state;
+
+    addr_t pa_temp;
+    addr_t vpn2;
+    addr_t vpn1;
+    addr_t vpn0;
+    addr_t offset;
 
     always @(posedge clk or negedge rstn) begin
         if (~rstn) begin
@@ -60,21 +64,21 @@ module TWU #(
                 pa_temp = (ppn_base << 12) | vpn2;
             end
             L2: begin
-                next_state = stall_cache ? L2 :
+                next_state = stall_from_cache ? L2 :
                              ~pte_pack.v ? IDLE :
                              pte_pack.r|pte_pack.w|pte_pack.x ? IDLE :
                              L1;
                 pa_temp = pte_pack.ppn | vpn1;
             end
             L1: begin
-                next_state = stall_cache ? L1 :
+                next_state = stall_from_cache ? L1 :
                              ~pte_pack.v ? IDLE :
                              pte_pack.r|pte_pack.w|pte_pack.x ? IDLE :
                              L0;
                 pa_temp = pte_pack.ppn | vpn0;
             end
             L0: begin
-                next_state = stall_cache ? L0 :
+                next_state = stall_from_cache ? L0 :
                              IDLE;
             end
             default: begin
@@ -90,8 +94,8 @@ assign vpn1 = va_from_core[29:21] << 3;
 assign vpn0 = va_from_core[20:12] << 3;
 assign offset = va_from_core[11:0];
 
-assign pa_mmu_to_cache = pa_temp;
-assign ren_mmu_to_cache = (next_state != IDLE);
+assign pa_to_cache = pa_temp;
+assign ren_to_cache = (next_state != IDLE);
 
 assign pa_to_core = pte_pack.ppn | offset;
 assign finish = (state != IDLE) & (next_state == IDLE);
