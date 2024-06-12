@@ -1,5 +1,6 @@
 `include "MMUStruct.vh"
 `include "PageStruct.vh"
+`include "Define.vh"
 module MMU #(
     parameter ADDR_WIDTH = 64,
     parameter DATA_WIDTH = 64,
@@ -83,6 +84,11 @@ module MMU #(
 
     logic [1:0]busy;
 
+    wire mmio_mtime = (`MTIME_BASE == addr_vir);
+    wire mmio_mtimcmp = (`MTIMECMP_BASE == addr_vir);
+    wire mmio_disp = (`DISP_BASE == addr_vir);
+
+
     Mem_ift #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH)
@@ -119,7 +125,7 @@ module MMU #(
         .rstn   (rstn & ~fence_flush),
 
         .va     (addr_vir),
-        .request((wen_cpu|ren_cpu) & translator_enable),
+        .request((wen_cpu|ren_cpu) & translator_enable & ~(mmio_mtime|mmio_mtimcmp|mmio_disp)),
 
         .pte    (pte_d),
         .stall  (tlb_stall_d),
@@ -200,6 +206,9 @@ module MMU #(
                     0;
     assign addr_phy = ~translator_enable ? addr_vir :
                       ren_twu            ? pa_twu :
+                      mmio_mtime         ? `MTIME_BASE :
+                      mmio_mtimcmp       ? `MTIMECMP_BASE :
+                      mmio_disp          ? `DISP_BASE :
                       (wen_cpu|ren_cpu)  ? (pte_pack_d.ppn | {{(ADDR_WIDTH-OFFSET){1'b0}},addr_vir[OFFSET-1:0]}) :
                       0;
 
@@ -217,6 +226,8 @@ module MMU #(
     assign wdata_mmu = wdata_cpu;
     assign wmask_mmu = wmask_cpu;
 
+    wire _page_fault_d;
+
     PageFaultCheck page_fault_check_i(
         .if_request(if_request),
         .wen(1'b0),
@@ -233,7 +244,9 @@ module MMU #(
         .priv(priv),
         .pte_pack(pte_pack_d),
         .translator_enable(translator_enable),
-        .page_fault(page_fault_d)
+        .page_fault(_page_fault_d)
     );
+
+    assign page_fault_d = _page_fault_d & ~(mmio_mtime|mmio_mtimcmp|mmio_disp);
 
 endmodule
