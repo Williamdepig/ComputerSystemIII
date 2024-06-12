@@ -1,4 +1,9 @@
-#include "types.h"
+#ifndef __RAND_H__
+#define __RAND_H__
 
-#define SEED 17
-uint64 rand();
+#include "stdint.h"
+
+#define SEED 13
+uint64_t rand();
+
+#endif

@@ -1,9 +1,9 @@
-#include "printk.h"
-#include "sbi.h"
+#include "stdarg.h"
 #include "stdbool.h"
+#include "ctype.h"
 
-#ifndef max
-#define max(a, b)           \
+#ifndef __MAX
+#define __MAX(a, b)           \
   ({                        \
     __typeof__(a) _a = (a); \
     __typeof__(b) _b = (b); \
@@ -21,14 +21,6 @@ struct fmt_flags {
   int width;
   int prec;
 };
-
-void putchar(char c) {
-  sbi_ecall(SBI_PUTCHAR, 0, c, 0, 0, 0, 0, 0);
-}
-
-int isspace(int c) {
-  return c == ' ' || (c >= '\t' && c <= '\r');
-}
 
 long strtol(const char *restrict nptr, char **restrict endptr, int base) {
   long ret = 0;
@@ -88,9 +80,9 @@ long strtol(const char *restrict nptr, char **restrict endptr, int base) {
 }
 
 // puts without newline
-int puts_wo_nl(void (*putch)(char), const char *s) {
+static int puts_wo_nl(int (*putch)(int), const char *s) {
   if (!s) {
-    return puts_wo_nl(putch, "(null)");
+    s = "(null)";
   }
   const char *p = s;
   while (*p) {
@@ -99,14 +91,8 @@ int puts_wo_nl(void (*putch)(char), const char *s) {
   return p - s;
 }
 
-int puts(const char *s) {
-  puts_wo_nl(putchar, s);
-  putchar('\n');
-  return 0;
-}
-
-static int print_dec_int(void (*putch)(char), unsigned long num, bool is_signed, struct fmt_flags *flags) {
-  if (is_signed && ((long)num == -(long)num)) {
+static int print_dec_int(int (*putch)(int), unsigned long num, bool is_signed, struct fmt_flags *flags) {
+  if (is_signed && num == 0x8000000000000000UL) {
     // special case for 0x8000000000000000
     return puts_wo_nl(putch, "-9223372036854775808");
   }
@@ -138,7 +124,7 @@ static int print_dec_int(void (*putch)(char), unsigned long num, bool is_signed,
 
   int written = 0;
 
-  for (int i = flags->width - max(decdigits, flags->prec) - has_sign_char; i > 0; i--) {
+  for (int i = flags->width - __MAX(decdigits, flags->prec) - has_sign_char; i > 0; i--) {
     putch(' ');
     ++written;
   }
@@ -161,11 +147,11 @@ static int print_dec_int(void (*putch)(char), unsigned long num, bool is_signed,
   return written;
 }
 
-static int vprintfmt(void (*putch)(char), const char *fmt, va_list vl) {
-  struct fmt_flags flags = {false, false, false, false, false, false, 0, 0};
-
+int vprintfmt(int (*putch)(int), const char *fmt, va_list vl) {
   static const char lowerxdigits[] = "0123456789abcdef";
   static const char upperxdigits[] = "0123456789ABCDEF";
+
+  struct fmt_flags flags = {};
 
   int written = 0;
 
@@ -182,12 +168,19 @@ static int vprintfmt(void (*putch)(char), const char *fmt, va_list vl) {
         flags.sign = true;
       } else if (*fmt == ' ') {
         flags.spaceflag = true;
+      } else if (*fmt == '*') {
+        flags.width = va_arg(vl, int);
       } else if (*fmt >= '1' && *fmt <= '9') {
         flags.width = strtol(fmt, (char **)&fmt, 10);
         fmt--;
       } else if (*fmt == '.') {
-        flags.prec = strtol(fmt + 1, (char **)&fmt, 10);
-        fmt--;
+        fmt++;
+        if (*fmt == '*') {
+          flags.prec = va_arg(vl, int);
+        } else {
+          flags.prec = strtol(fmt, (char **)&fmt, 10);
+          fmt--;
+        }
       } else if (*fmt == 'x' || *fmt == 'X' || *fmt == 'p') {
         bool is_long = *fmt == 'p' || flags.longflag;
 
@@ -214,7 +207,7 @@ static int vprintfmt(void (*putch)(char), const char *fmt, va_list vl) {
           flags.prec = flags.width - 2 * prefix;
         }
 
-        for (int i = flags.width - 2 * prefix - max(hexdigits, flags.prec); i > 0; i--) {
+        for (int i = flags.width - 2 * prefix - __MAX(hexdigits, flags.prec); i > 0; i--) {
           putch(' ');
           ++written;
         }
@@ -236,15 +229,10 @@ static int vprintfmt(void (*putch)(char), const char *fmt, va_list vl) {
         }
 
         flags.in_format = false;
-      } else if (*fmt == 'd') {
+      } else if (*fmt == 'd' || *fmt == 'i' || *fmt == 'u') {
         long num = flags.longflag ? va_arg(vl, long) : va_arg(vl, int);
 
-        written += print_dec_int(putch, num, true, &flags);
-        flags.in_format = false;
-      } else if (*fmt == 'u') {
-        unsigned long num = flags.longflag ? va_arg(vl, unsigned long) : va_arg(vl, unsigned int);
-
-        written += print_dec_int(putch, num, false, &flags);
+        written += print_dec_int(putch, num, *fmt != 'u', &flags);
         flags.in_format = false;
       } else if (*fmt == 'n') {
         if (flags.longflag) {
@@ -283,13 +271,3 @@ static int vprintfmt(void (*putch)(char), const char *fmt, va_list vl) {
 
   return written;
 }
-
-int printk(const char *s, ...) {
-  int res = 0;
-  va_list vl;
-  va_start(vl, s);
-  res = vprintfmt(putchar, s, vl);
-  va_end(vl);
-  return res;
-}
-

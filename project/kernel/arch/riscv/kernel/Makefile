@@ -2,8 +2,11 @@ ASM_SRC		= $(sort $(wildcard *.S))
 C_SRC       = $(sort $(wildcard *.c))
 OBJ		    = $(patsubst %.S,%.o,$(ASM_SRC)) $(patsubst %.c,%.o,$(C_SRC))
 
-all:$(OBJ)
+# INCLUDE += -I $(shell pwd)/include
 
+CFLAG := ${CFLAG} -I $(shell pwd)/../include
+
+all:$(OBJ)
 
 %.o:%.S
 	${GCC}  ${CFLAG} -c $<
@@ -12,4 +15,4 @@ all:$(OBJ)
 	${GCC}  ${CFLAG} -c $<
 
 clean:
-	$(shell rm *.o 2>/dev/null)
+	rm -f *.o

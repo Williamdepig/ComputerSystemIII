@@ -43,17 +43,28 @@ SECTIONS
 
     .data : ALIGN(0x1000){
         _sdata = .;
-
         *(.sdata .sdata*)
         *(.data .data.*)
-
         _edata = .;
+        . = ALIGN(0x1000);
+
+        uapp_start = .;
+        *(.uapp1)
+        uapp_end = .;
+        . = ALIGN(0x1000);
+
+        uapp2_start = .;
+        *(.uapp2)
+        uapp2_end = .;
+        . = ALIGN(0x1000);
     } >ramv AT>ram
 
-    .got : ALIGN(0x10){
+    .got : ALIGN(0x1000){
+        _sgot = .;
 
         *(.got .got.*)
 
+        _egot = .;
     } >ramv AT>ram
 
     .bss : ALIGN(0x1000){
@@ -65,17 +76,19 @@ SECTIONS
 
         _ebss = .;
     } >ramv AT>ram
+
+    .stack : ALIGN(0x1000) {
+        _sstack = .;
+
+        *(.stack .stack.*)
+
+        . = ALIGN(0x1000);
+        . += 0x20000;
+
+        _estack = .;
+    } >ramv AT>ram
+
     /* 记录kernel代码的结束地址 */
     . = ALIGN(0x1000);
     _ekernel = .;
-
-    
-    .stack : ALIGN(0x1000){
-        _sstack = .;
-
-        *(.stack.entry)
-
-        _estack = .;
-    }
-    
 }

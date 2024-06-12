@@ -1,20 +1,14 @@
-// clock.c
-
 #include "sbi.h"
-#include "clock.h"
-unsigned long TIMECLOCK = 0x30000;
+#include "kio.h"
 
-unsigned long get_cycles() {
-    unsigned long time;
-    asm volatile (
-        "rdtime %[time]"
-        : [time] "=r" (time)
-        : : "memory"
-    );
-    return time;
+static const uint64_t TIMECLOCK = 0x400;
+
+uint64_t get_cycles(void) {
+  uint64_t cycles;
+  asm volatile("rdtime %0" : "=r"(cycles)::"memory");
+  return cycles;
 }
 
-void clock_set_next_event() {
-    unsigned long next_time = get_cycles() + TIMECLOCK;
-    sbi_set_timer(next_time);
-} 
+void clock_set_next_event(void) {
+  sbi_set_timer(get_cycles() + TIMECLOCK);
+}

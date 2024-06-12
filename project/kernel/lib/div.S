@@ -148,4 +148,3 @@ FUNC_END (__moddi3)
   ret
 FUNC_END (__divsi3)
 #endif
-
