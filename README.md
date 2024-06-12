@@ -11,10 +11,18 @@ FINISH:
 - `MMU` 编写完成。
 - `TLB` 编写完成
 
-TODO:
+`TLB`：
+就是在 lab2 中实现的 `cache` 的翻版。
 
-- `sfence.vma` 与 `fence.i` 解码，实际就是给一个刷新信号。
-- `MMU` 中需要检测 `page fault`，在 `IFExceptExamine` 与 `MEMExceptExamine` 中增加异常检测。
-- 调整 `BTB`，检查是否会发生错误判断导致缺页异常发生。
-- cache 中 sfence 强制写回
-- 指令的提交
+- 删除 `writeback` 操作。
+- 由于 `TLB` 只和 `TWU` 交互，因此展开总线接口。
+- 修改为 `64` 位数据传输，而非 `128` 位。
+
+`TWU`：
+根据输入的虚拟地址与 `satp` 中存储的 `ppn`，与 `Dcache` 交互得到 `pte`。
+
+- 状态机实现。
+- 读取的每级页表项都检查 `RWX` 与 `V` 位，如果 `RWX` 位不为零，则就是叶子页表项，直接返回。否则一共读取三级页表并返回页表项。
+
+1. 如果 `TLB` 没有请求，保持 `IDLE` 状态。
+2. 

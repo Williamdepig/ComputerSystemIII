@@ -12,7 +12,7 @@ module PageFaultExamine (
     output ExceptStruct::ExceptPack except_o
 );
 
-    wire is_page_fault = page_fault & valid_i;
+    wire is_page_fault = page_fault & valid_i & (we|re|if_request);
     assign except_o.except = is_page_fault;
     assign except_o.epc = PC_i;
     assign except_o.ecause = ~is_page_fault ? 64'h0 :

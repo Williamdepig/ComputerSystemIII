@@ -8,6 +8,7 @@ module MMU #(
     input clk,
     input rstn,
     input fence_flush,
+    input [1:0]priv,
 
 // core <--> mmu
     input  [DATA_WIDTH-1:0] satp,
@@ -33,6 +34,7 @@ module MMU #(
     output ren_mmu,
     output [DATA_WIDTH-1:0]   wdata_mmu,
     output [DATA_WIDTH/8-1:0] wmask_mmu,
+    output translator_enable,
     
     input if_stall_from_cache,
     input mem_stall_from_cache,
@@ -190,8 +192,6 @@ module MMU #(
         end
     end
 
-    wire translator_enable;
-
     assign translator_enable = translator_enable_reg;
     assign ppn_base = {{20{1'b0}} ,satp[PPN_WIDTH-1:0]};
 
@@ -217,14 +217,23 @@ module MMU #(
     assign wdata_mmu = wdata_cpu;
     assign wmask_mmu = wmask_cpu;
 
-    wire _page_fault_d, _page_fault_i;
-
-    assign _page_fault_d =( (wen_cpu&(~pte_pack_d.w|~pte_pack_d.v)) | (ren_cpu&(~pte_pack_d.r|~pte_pack_d.v)) );
-
-    assign _page_fault_i = (if_request & (~pte_pack_i.x|~pte_pack_i.v));
-
-    assign page_fault_d = _page_fault_d & translator_enable;
-    assign page_fault_i = _page_fault_i & translator_enable;
-
+    PageFaultCheck page_fault_check_i(
+        .if_request(if_request),
+        .wen(1'b0),
+        .ren(1'b0),
+        .priv(priv),
+        .pte_pack(pte_pack_i),
+        .translator_enable(translator_enable),
+        .page_fault(page_fault_i)
+    );
+    PageFaultCheck page_fault_check_d(
+        .if_request(1'b0),
+        .wen(wen_cpu),
+        .ren(ren_cpu),
+        .priv(priv),
+        .pte_pack(pte_pack_d),
+        .translator_enable(translator_enable),
+        .page_fault(page_fault_d)
+    );
 
 endmodule

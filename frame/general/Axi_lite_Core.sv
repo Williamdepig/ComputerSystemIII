@@ -69,6 +69,7 @@ module Axi_lite_Core #(
     wire [63:0] addr_phy;
     wire        page_fault_i;
     wire        page_fault_d;
+    wire        translator_enable;
 
     Core core (
         .clk        (clk),
@@ -89,6 +90,7 @@ module Axi_lite_Core #(
         .mem_stall  (mem_stall_to_cpu),
         .if_page_fault(page_fault_i),
         .mem_page_fault(page_fault_d),
+        .translator_enable(translator_enable),
 
         .cosim_valid    (cosim_valid),
         .cosim_pc       (cosim_pc),
@@ -117,6 +119,7 @@ module Axi_lite_Core #(
         .clk(clk),
         .rstn(rstn),
         .fence_flush(fence_flush),
+        .priv(cosim_csr_info.priv[1:0]),
 
         .satp(cosim_csr_info.satp),
         .pc_vir(pc),
@@ -134,6 +137,7 @@ module Axi_lite_Core #(
         
         .page_fault_i(page_fault_i),
         .page_fault_d(page_fault_d),
+        .translator_enable(translator_enable),
 
         .if_mmu(if_mmu_to_cache),
         .wen_mmu(wen_mmu),

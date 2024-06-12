@@ -4,11 +4,14 @@ module MEMExceptExamine(
     input rst,
     input stall,
     input flush,
+    input page_fault,
 
     input [63:0] pc_mem,
     input [1:0] priv,
     input [31:0] inst_mem,
     input valid_mem,
+    input we_mem,
+    input re_mem,
     
     input ExceptStruct::ExceptPack except_mem,
     output ExceptStruct::ExceptPack except_wb,
@@ -19,11 +22,16 @@ module MEMExceptExamine(
     ExceptPack except_new;
     ExceptPack except;
 
-    OldInstExamine instexmaine(
+    PageFaultExamine mem_page_fault_exmaine(
         .PC_i(pc_mem),
         .priv_i(priv),
         .inst_i(inst_mem),
         .valid_i(valid_mem),
+        .page_fault(page_fault),
+        .if_request(1'b0),
+        .we(we_mem),
+        .re(re_mem),
+
         .except_o(except_new)
     );
 

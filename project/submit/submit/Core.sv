@@ -25,6 +25,7 @@ module Core (
     output wire if_request,
     output wire switch_mode,
     output wire fence_flush,
+    input wire translator_enable,
 
     input TimerStruct::TimerPack time_out,
 
@@ -355,7 +356,7 @@ module Core (
         .flush(flush_idexe),
         .stall(stall_idexe),
         .rst(rst),
-        .valid_id(valid_id & ~fence_id),
+        .valid_id(valid_id & (~fence_id|translator_enable)),
         .except_happen_id(except_happen_id),
         .valid_exe(valid_exe),
 
@@ -525,11 +526,14 @@ module Core (
         .rst(rst),
         .stall(stall_memwb),
         .flush(flush_memwb),
+        .page_fault(mem_page_fault),
 
         .pc_mem(pc_mem),
         .priv(priv),
         .inst_mem(inst_mem),
         .valid_mem(valid_mem),
+        .we_mem(we_mem),
+        .re_mem(we_mem),
 
         .except_mem(except_mem),
         .except_wb(except_wb),
