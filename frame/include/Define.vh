@@ -137,6 +137,9 @@
 `define S_CALL 64'h9
 `define H_CALL 64'ha
 `define M_CALL 64'hb
+`define INST_PAGE_FAULT 64'hc
+`define LOAD_PAGE_FAULT 64'hd
+`define STORE_PAGE_FAULT 64'hf
 
 `define ECALL 32'h00000073
 `define EBREAK 32'h00100073

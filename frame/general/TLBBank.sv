@@ -34,7 +34,7 @@ module TLBBank #(
     localparam GRANU_BEGIN = 0;
     localparam GRANU_END = GRANU_BEGIN + GRANU_LEN - 1;
     localparam OFFSET_LEN = $clog2(BANK_NUM);
-    localparam OFFSET_BEGIN = GRANU_END + 1;
+    localparam OFFSET_BEGIN = 0;
     localparam OFFSET_END = OFFSET_BEGIN + OFFSET_LEN - 1;
     localparam INDEX_LEN = $clog2(LINE_NUM);
     localparam INDEX_BEGIN = OFFSET_END + 1;
@@ -70,7 +70,7 @@ module TLBBank #(
     offset_t offset_rd;
     assign tag_rd    = addr_rd[TAG_END:TAG_BEGIN];
     assign index_rd  = addr_rd[INDEX_END:INDEX_BEGIN];
-    assign offset_rd = {addr_rd[OFFSET_END:OFFSET_BEGIN+1], 1'b0};
+    assign offset_rd = addr_rd[OFFSET_END:OFFSET_BEGIN];
 
     wire      [           1:0] hit;
     CacheLine                  index_line     [1:0];

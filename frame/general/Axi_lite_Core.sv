@@ -58,6 +58,7 @@ module Axi_lite_Core #(
     wire        clk = mem_ift.clk;
     wire        rstn = mem_ift.rstn;
     wire        switch_mode;
+    wire        fence_flush;
 
     wire        if_mmu_to_cache;
     wire        wen_mmu;
@@ -66,6 +67,8 @@ module Axi_lite_Core #(
     wire [ 7:0] wmask_mmu;
     wire [63:0] pc_phy;
     wire [63:0] addr_phy;
+    wire        page_fault_i;
+    wire        page_fault_d;
 
     Core core (
         .clk        (clk),
@@ -81,8 +84,11 @@ module Axi_lite_Core #(
         .rdata_mem  (rdata_to_cpu),
         .if_request (if_request),
         .switch_mode(switch_mode),
+        .fence_flush(fence_flush),
         .if_stall   (if_stall_to_cpu),
         .mem_stall  (mem_stall_to_cpu),
+        .if_page_fault(page_fault_i),
+        .mem_page_fault(page_fault_d),
 
         .cosim_valid    (cosim_valid),
         .cosim_pc       (cosim_pc),
@@ -110,7 +116,7 @@ module Axi_lite_Core #(
     MMU mmu(
         .clk(clk),
         .rstn(rstn),
-        .fresh(0),
+        .fence_flush(fence_flush),
 
         .satp(cosim_csr_info.satp),
         .pc_vir(pc),
@@ -125,6 +131,9 @@ module Axi_lite_Core #(
         .mem_stall_to_cpu(mem_stall_to_cpu),
         .rdata_to_cpu(rdata_to_cpu),
         .inst(inst_to_cpu),
+        
+        .page_fault_i(page_fault_i),
+        .page_fault_d(page_fault_d),
 
         .if_mmu(if_mmu_to_cache),
         .wen_mmu(wen_mmu),

@@ -106,13 +106,13 @@ module TWU #(
                     _ren <= next_state == IDLE ? 0 : 1;
                     _finish <= next_state == IDLE ? 1 : 0;
                     pa_temp <= next_state == L1 ? (pte_pack.ppn | vpn1) : pa_temp;
-                    _pte <= next_state == IDLE ? pte_from_cache : _pte;
+                    _pte <= next_state == IDLE ? (pte_from_cache |{{36{1'b0}},va[29:12],{10{1'b0}}}) : _pte;
                 end
                 L1: begin
                     _ren <= next_state == IDLE ? 0 : 1;
                     _finish <= next_state == IDLE ? 1 : 0;
                     pa_temp <= next_state == L0 ? (pte_pack.ppn | vpn0) : pa_temp;
-                    _pte <= next_state == IDLE ? pte_from_cache : _pte;
+                    _pte <= next_state == IDLE ? (pte_from_cache |{{45{1'b0}},va[20:12],{10{1'b0}}} ) : _pte;
                 end
                 L0: begin
                     _ren <= next_state == IDLE ? 0 : 1;

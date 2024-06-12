@@ -16,3 +16,5 @@ TODO:
 - `sfence.vma` 与 `fence.i` 解码，实际就是给一个刷新信号。
 - `MMU` 中需要检测 `page fault`，在 `IFExceptExamine` 与 `MEMExceptExamine` 中增加异常检测。
 - 调整 `BTB`，检查是否会发生错误判断导致缺页异常发生。
+- cache 中 sfence 强制写回
+- 指令的提交

@@ -6,6 +6,7 @@
 module CSRModule (
     input         clk,
     input         rst,
+    input         fence_wb,
     input         csr_we_wb,
     input  [11:0] csr_addr_wb,
     input  [63:0] csr_val_wb,
@@ -23,6 +24,7 @@ module CSRModule (
 
     output [ 1:0] priv,
     output        switch_mode,
+    output        fence_flush,
     output [63:0] pc_csr,
 
     output        cosim_interrupt,
@@ -357,6 +359,9 @@ module CSRModule (
     assign m_ret       = csr_ret[1] & ~s_trap & ~m_trap;
     assign switch_mode = s_ret | m_ret | s_trap | m_trap;
 
+    wire fence = fence_wb;
+    assign fence_flush = fence;
+
     wire       [63:0] mask_interrupt = mie & mip;
     wire       [63:0] enable_interrupt_m = mask_interrupt & ~mideleg & {64{(priv == 2'b11 & mie_reg) | (priv < 2'b11)}};
     wire       [63:0] enable_interrupt_s = mask_interrupt & mideleg & {64{(priv == 2'b01 & sie_reg) | (priv == 2'b00)}};
@@ -380,7 +385,7 @@ module CSRModule (
     assign s_trap = (s_trap_int | s_trap_exp) & (priv == 2'b01);
     assign m_trap = (interrupt & valid_wb | except) & ~s_trap;
 
-    assign pc_csr = m_trap ? mtvec : s_trap ? stvec : m_ret ? mepc : s_ret ? sepc : 64'b0;
+    assign pc_csr = m_trap ? mtvec : s_trap ? stvec : m_ret ? mepc : s_ret ? sepc : fence ? (pc_wb+4) : 64'b0;
 
 
     // wire is_sstatus_r=csr_addr_id==`SSTATUS;
