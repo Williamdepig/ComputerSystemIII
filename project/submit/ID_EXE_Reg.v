@@ -7,6 +7,7 @@ module ID_EXE_Reg(
     input rst,
     input valid_id,
     input except_happen_id,
+    input translator_enable,
     output reg valid_exe,
 //以下三个数据将在每个阶段寄存器组间继承
     input [63:0]predict_pc_id,
@@ -57,7 +58,10 @@ module ID_EXE_Reg(
     input [11:0]csr_addr_id,
     input [63:0]csr_val_idexe,
     output reg [11:0]csr_addr_exe,
-    output reg [63:0]csr_val
+    output reg [63:0]csr_val,
+
+    input fence_id,
+    output reg fence_exe
 );
 
     always @(posedge clk) begin
@@ -88,6 +92,8 @@ module ID_EXE_Reg(
             imm_exe <= 0;
             csr_addr_exe <= 0;
             csr_val <= 0;
+
+            fence_exe <= 0;
         end
         else if(~stall)begin      //传递所需信号和数据
             if(flush)begin
@@ -117,6 +123,8 @@ module ID_EXE_Reg(
                 imm_exe <= 0;
                 csr_addr_exe <= 0;
                 csr_val <= 0;
+
+                fence_exe <= 0;
             end
             else if(except_happen_id)begin
                 predict_pc_exe <= 0;
@@ -145,10 +153,12 @@ module ID_EXE_Reg(
                 imm_exe <= 0;
                 csr_addr_exe <= 0;
                 csr_val <= 0;
+
+                fence_exe <= 0;
             end
             else begin
                 predict_pc_exe <= predict_pc_id;
-                pc_exe <= pc_id;
+                pc_exe <= fence_id&(~translator_enable) ? pc_id+64'hffffffdf80000000 : pc_id;
                 npc_exe <= npc_id;
                 inst_exe <= inst_id;
                 valid_exe <= valid_id;
@@ -173,6 +183,8 @@ module ID_EXE_Reg(
                 imm_exe <= imm_id;
                 csr_addr_exe <= csr_addr_id;
                 csr_val <= csr_val_idexe;
+
+                fence_exe <= fence_id;
             end
         end
         else begin
@@ -202,6 +214,8 @@ module ID_EXE_Reg(
             imm_exe <= imm_exe;
             csr_addr_exe <= csr_addr_exe;
             csr_val <= csr_val;
+
+            fence_exe <= fence_exe;
         end 
     end
 endmodule

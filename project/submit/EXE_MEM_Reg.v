@@ -44,7 +44,10 @@ module EXE_MEM_Reg(
     output reg [4:0]rd_mem,
     output reg [63:0]alu_res_mem,
     output reg [63:0]rs1_data_mem,
-    output reg [63:0]rs2_data_mem
+    output reg [63:0]rs2_data_mem,
+
+    input fence_exe,
+    output reg fence_mem
 );
 
     always @(posedge clk) begin
@@ -69,6 +72,8 @@ module EXE_MEM_Reg(
             alu_res_mem <= 0;
             rs1_data_mem <= 0;
             rs2_data_mem <= 0; 
+
+            fence_mem <= 0;
         end
         else if(~stall)begin      //传递所需信号和数据
             if (flush) begin
@@ -91,7 +96,9 @@ module EXE_MEM_Reg(
                 csr_val_mem <= 0;
                 alu_res_mem <= 0;
                 rs1_data_mem <= 0;
-                rs2_data_mem <= 0;               
+                rs2_data_mem <= 0;    
+
+                fence_mem <= 0;           
             end
             else if(except_happen_exe)begin
                 pc_mem <= pc_exe;
@@ -114,6 +121,8 @@ module EXE_MEM_Reg(
                 alu_res_mem <= 0;
                 rs1_data_mem <= 0;
                 rs2_data_mem <= 0;
+
+                fence_mem <= 0;
             end
             else begin
                 pc_mem <= pc_exe;
@@ -136,6 +145,8 @@ module EXE_MEM_Reg(
                 alu_res_mem <= alu_res_exe;
                 rs1_data_mem <= rs1_data_exe;
                 rs2_data_mem <= rs2_data_exe;
+
+                fence_mem <= fence_exe;
             end
         end
         else begin
@@ -159,6 +170,8 @@ module EXE_MEM_Reg(
             alu_res_mem <= alu_res_mem;
             rs1_data_mem <= rs1_data_mem;
             rs2_data_mem <= rs2_data_mem; 
+
+            fence_mem <= fence_mem;
         end
     end
 

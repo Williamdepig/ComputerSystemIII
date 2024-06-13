@@ -17,6 +17,7 @@ module Control(
 
   output reg [1:0]csr_ret,
   output reg [2:0]csr_sel,
+  output reg fence,
   output reg we_csr
 
 );
@@ -24,12 +25,14 @@ module Control(
 // inst code
   wire [6:0] op_code;
   wire [2:0] funct3;
+  wire [6:0] funct7;
   wire funct7_1;
   wire [11:0]csr_imm;
 
   assign op_code = inst[6:0];
   assign funct3  = inst[14:12];
   assign funct7_1= inst[30];
+  assign funct7 = inst[31:25];
   assign csr_imm = inst[31:20];
 
   always @(*) begin
@@ -49,6 +52,7 @@ module Control(
     we_csr = 0;
     csr_ret = 0;
     csr_sel = 0;
+    fence = 0;
     case (op_code)
         7'b0110011:begin
             alu_asel = 1; alu_bsel=1; wb_sel = 1; we_reg = 1; use_rs1 = 1; use_rs2 = 1;
@@ -152,15 +156,19 @@ module Control(
                 default: alu_op = 0 ;
             endcase
         end
-        7'b1110011:begin    //csr
-            wb_sel = 1;we_reg = 1;we_csr = 1;alu_asel = 3;
+        7'b1110011:begin    // system
+            wb_sel = 1;we_reg = 1;we_csr = 1;alu_asel = 3; fence=0;
             case(funct3)
-                3'b000:begin    //ecall, eret
+                3'b000:begin    //ecall, eret, sfence
                     case(csr_imm)
+                        12'h120: fence = 1;
                         12'h002: csr_ret = 2'b00; //uret
                         12'h102: csr_ret = 2'b01; //sret
                         12'h302: csr_ret = 2'b11; //mret
-                        default:csr_ret = 2'b00;
+                        default:begin
+                            csr_ret = 2'b00;
+                            fence = 0;
+                        end
                     endcase
                 end
                 3'b001:begin    //csrrw 
@@ -178,14 +186,17 @@ module Control(
                 3'b101:begin    //csrrwi
                     use_rs1 = 0;
                     csr_sel = 4;
+                    immgen_op = 3'b110;
                 end
                 3'b110:begin    //csrrsi
                     use_rs1 = 0;
                     csr_sel = 5;
+                    immgen_op = 3'b110;
                 end
                 3'b111:begin    //csrrci
                     use_rs1 = 0;
                     csr_sel = 6;
+                    immgen_op = 3'b110;
                 end
                 default: begin
                     csr_sel = 0;

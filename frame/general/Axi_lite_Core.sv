@@ -166,7 +166,7 @@ module Axi_lite_Core #(
         .CAPACITY  (256)
     ) icache (
         .clk        (clk),
-        .rstn       (rstn),
+        .rstn       (rstn & (~fence_flush)),
         .pc         (pc_phy),
         .if_request (if_mmu_to_cache),
         .inst       (inst),

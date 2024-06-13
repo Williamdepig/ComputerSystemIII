@@ -17,10 +17,15 @@ module Core (
     output wire re_mem,                   /* read enable */
     input wire [63:0] rdata_mem,          /* read data from memory */
 
+    input wire if_page_fault,
+    input wire mem_page_fault,
+
     input wire if_stall,
     input wire mem_stall,
     output wire if_request,
     output wire switch_mode,
+    output wire fence_flush,
+    input wire translator_enable,
 
     input TimerStruct::TimerPack time_out,
 
@@ -99,7 +104,7 @@ module Core (
     wire [63:0]csr_val_idexe;
 
     //ctrl sign id
-    wire we_reg_id , we_mem_id , npc_sel_id , is_load_id , we_csr_id;
+    wire we_reg_id , we_mem_id , npc_sel_id , is_load_id , we_csr_id,fence_id;
     wire [1:0] alu_asel_id , alu_bsel_id , wb_sel_id, csr_ret_id; 
     wire [2:0] immgen_op_id , bralu_op_id , memdata_width_id , csr_sel_id;
     wire [3:0] alu_op_id; 
@@ -126,7 +131,7 @@ module Core (
     wire [63:0]csr_val_exe;  
 
     //control sign exe
-    wire we_reg_exe , we_mem_exe , npc_sel_exe , is_load_exe , we_csr_exe;
+    wire we_reg_exe , we_mem_exe , npc_sel_exe , is_load_exe , we_csr_exe,fence_exe;
     wire [1:0] alu_asel_exe , alu_bsel_exe , wb_sel_exe, csr_ret_exe; 
     wire [2:0] bralu_op_exe , memdata_width_exe , csr_sel_exe;
     wire [3:0] alu_op_exe , br_taken_exe;  
@@ -152,7 +157,7 @@ module Core (
     wire [63:0]csr_val_mem;  
 
     //control sign mem
-    wire we_reg_mem , we_mem_mem , is_load_mem , we_csr_mem;
+    wire we_reg_mem , we_mem_mem , is_load_mem , we_csr_mem, fence_mem;
     wire [1:0] wb_sel_mem, csr_ret_mem; 
     wire [2:0] memdata_width_mem;
     wire [3:0] br_taken_mem;
@@ -174,7 +179,7 @@ module Core (
     wire [63:0]csr_val_wb;  
 
     //control sign wb
-    wire we_reg_wb , we_mem_wb , we_csr_wb , we_csr_wb_temp;
+    wire we_reg_wb , we_mem_wb , we_csr_wb , we_csr_wb_temp, fence_wb;
     wire [1:0] wb_sel_wb, csr_ret_wb; 
     wire [3:0] br_taken_wb;
 
@@ -182,7 +187,8 @@ module Core (
     CSRModule csrmodule(
         .clk(clk),
         .rst(rst),
-        .csr_we_wb(we_csr_wb),
+        .fence_wb(fence_wb),
+        .csr_we_wb(we_csr_wb),  
         .csr_addr_wb(csr_addr_wb),
         .csr_val_wb(csr_val_wb),
         .csr_addr_id(csr_addr_id),
@@ -197,6 +203,7 @@ module Core (
 
         .priv(priv),
         .switch_mode(switch_mode),
+        .fence_flush(fence_flush),
         .pc_csr(pc_csr),
 
         .cosim_interrupt(cosim_interrupt),
@@ -206,7 +213,7 @@ module Core (
     );
     BTB btb(
         .clk(clk),
-        .rst(rst),
+        .rst(rst | fence_flush | switch_mode),
         .stall(stall_idexe),
         .pc_if(pc_if),
         .jump_if(jump_if),
@@ -238,7 +245,7 @@ module Core (
         .clk(clk),
         .rst(rst),
         .stall(stall_pc),
-        .switch_mode(switch_mode),
+        .switch_mode(switch_mode | fence_flush),
         .pc_in(predict_pc_if),
         .pc_csr(pc_csr),
         .npc_sel_id(npc_sel_id),
@@ -254,11 +261,13 @@ module Core (
         .rst(rst),
         .stall(stall_ifid),
         .flush(flush_ifid),
+        .page_fault(if_page_fault),
 
         .pc_if(pc_if),
         .priv(priv),
         .inst_if(inst_if),
         .valid_if(valid_if),
+        .if_request(if_request),
 
         .except_id(except_id),
         .except_happen_if(except_happen_if)
@@ -304,12 +313,13 @@ module Core (
         .use_rs2(use_rs2_id),
         .we_csr(we_csr_id),
         .csr_sel(csr_sel_id),
-        .csr_ret(csr_ret_id)
+        .csr_ret(csr_ret_id),
+        .fence(fence_id)
         );
     Regs regs(
         .clk(clk),
         .rst(rst),
-        .we(we_reg_wb&~switch_mode),
+        .we(we_reg_wb&~switch_mode &~fence_flush),
         .read_addr_1(rs1_addr_id),
         .read_addr_2(rs2_addr_id),
         .write_addr(rd_addr_wb),
@@ -336,6 +346,7 @@ module Core (
         .illegal_id(inst_id[1:0]!=2'b11),//先如此简单判断一下
         .inst_id(inst_id),
         .valid_id(valid_id),
+        .translator_enable(translator_enable),
 
         .except_id(except_id),
         .except_exe(except_exe),
@@ -346,9 +357,10 @@ module Core (
         .flush(flush_idexe),
         .stall(stall_idexe),
         .rst(rst),
-        .valid_id(valid_id),
+        .valid_id(valid_id & (~fence_id|translator_enable)),
         .except_happen_id(except_happen_id),
         .valid_exe(valid_exe),
+        .translator_enable(translator_enable),
 
         .predict_pc_id(predict_pc_id),
         .pc_id(pc_id),
@@ -397,7 +409,10 @@ module Core (
         .rs1_data_exe(rs1_data_exe),
         .rs2_data_exe(rs2_data_exe),
         .csr_val(csr_val),
-        .imm_exe(imm_exe)
+        .imm_exe(imm_exe),
+
+        .fence_id(fence_id),
+        .fence_exe(fence_exe)
     );
     Branch branch(
         .bralu_op(bralu_op_exe),
@@ -487,7 +502,10 @@ module Core (
         .rs1_data_exe(rs1_data_exe),
         .rs2_data_exe(rs2_data_exe),                       
         .rs1_data_mem(rs1_data_mem),
-        .rs2_data_mem(rs2_data_mem)
+        .rs2_data_mem(rs2_data_mem),
+
+        .fence_exe(fence_exe),
+        .fence_mem(fence_mem)
     );
     Data_Off dataoff(
         .res(alu_res_mem),
@@ -510,11 +528,14 @@ module Core (
         .rst(rst),
         .stall(stall_memwb),
         .flush(flush_memwb),
+        .page_fault(mem_page_fault),
 
         .pc_mem(pc_mem),
         .priv(priv),
         .inst_mem(inst_mem),
         .valid_mem(valid_mem),
+        .we_mem(we_mem),
+        .re_mem(we_mem),
 
         .except_mem(except_mem),
         .except_wb(except_wb),
@@ -564,7 +585,10 @@ module Core (
         .rs1_data_mem(rs1_data_mem),
         .rs2_data_mem(rs2_data_mem),                       
         .rs1_data_wb(rs1_data_wb),
-        .rs2_data_wb(rs2_data_wb)
+        .rs2_data_wb(rs2_data_wb),
+
+        .fence_mem(fence_mem),
+        .fence_wb(fence_wb)
     );    
     WB_MUX wbmux(
         .wb_sel(wb_sel_wb),
@@ -590,6 +614,7 @@ module Core (
         .error_prediction(error_prediction),
 
         .switch_mode(switch_mode),
+        .fence_flush(fence_flush),
 
         .if_stall(if_stall),
         .mem_stall(mem_stall),

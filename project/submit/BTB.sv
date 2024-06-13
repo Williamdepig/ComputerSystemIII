@@ -17,16 +17,16 @@ module BTB #(
 );
 
     localparam INDEX_BEGIN = 1;
-    localparam INDEX_LEN = $clog2(DEPTH); // == log_2 (DEPTH) == 4
-    localparam INDEX_END = INDEX_BEGIN+INDEX_LEN-1;  // == 4
-    localparam TAG_BEGIN = INDEX_END+1; // == 5
+    localparam INDEX_LEN = $clog2(DEPTH); // == log_2(DEPTH)
+    localparam INDEX_END = INDEX_BEGIN+INDEX_LEN-1; 
+    localparam TAG_BEGIN = INDEX_END+1;
     localparam TAG_END = ADDR_WIDTH-1;  // == 63
-    localparam TAG_LEN = TAG_END-TAG_BEGIN+1; // 59
+    localparam TAG_LEN = TAG_END-TAG_BEGIN+1;
 
-    typedef logic [TAG_LEN-1:0] tag_t; // 58:0
-    typedef logic [INDEX_LEN-1:0] index_t; // 3:0
-    typedef logic [STATE_NUM-1:0] state_t; // 1:0
-    typedef logic [ADDR_WIDTH-1:0] addr_t; // 63:0
+    typedef logic [TAG_LEN-1:0] tag_t;
+    typedef logic [INDEX_LEN-1:0] index_t;
+    typedef logic [STATE_NUM-1:0] state_t;
+    typedef logic [ADDR_WIDTH-1:0] addr_t;
 
     typedef struct{
         tag_t tag;
@@ -72,7 +72,6 @@ module BTB #(
     end
 
     always @(*) begin
-        next_state = 2'b00; 
         if (is_jump_exe) begin
             if (btb_exe.valid) begin
                 case(btb_exe.state)
@@ -86,6 +85,9 @@ module BTB #(
             else begin
                 next_state = 2'b00;
             end
+        end
+        else begin
+            next_state = 2'b00;
         end
     end
     always @(posedge clk) begin

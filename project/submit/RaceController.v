@@ -16,6 +16,7 @@ module RaceController(
     input error_prediction,
 
     input switch_mode,
+    input fence_flush,
 
     input if_stall,       //取内存的stall
     input mem_stall, 
@@ -31,15 +32,16 @@ module RaceController(
     output wire flush_MEMWB
 );
 //    assign stall_IFID = (rs1_addr_id == rd_addr_exe & we_reg_exe & rs1_addr_id != 0 & use_rs1_id) | (rs2_addr_id == rd_addr_exe & we_reg_exe & rs2_addr_id != 0 & use_rs2_id) | (rs1_addr_id == rd_addr_mem & we_reg_mem & rs1_addr_id != 0 & use_rs1_id) | (rs2_addr_id == rd_addr_mem & we_reg_mem & rs2_addr_id != 0 & use_rs2_id); 
-    assign stall_IFID = ((is_load_exe == 1 && rs1_addr_id == rd_addr_exe && we_reg_exe && rs1_addr_id != 0) || (is_load_exe == 1 && rs2_addr_id == rd_addr_exe && we_reg_exe && rs2_addr_id != 0) || stall_IDEXE)&&~error_prediction&&~switch_mode;
-    assign stall_PC = ~switch_mode&(stall_IFID | if_stall)&~error_prediction;
-    assign stall_IDEXE = (stall_EXEMEM || (error_prediction & if_stall))&&~switch_mode;
-    assign stall_EXEMEM = mem_stall & ~switch_mode;
+    wire _switch_mode = switch_mode | fence_flush;
+    assign stall_IFID = ((is_load_exe == 1 && rs1_addr_id == rd_addr_exe && we_reg_exe && rs1_addr_id != 0) || (is_load_exe == 1 && rs2_addr_id == rd_addr_exe && we_reg_exe && rs2_addr_id != 0) || stall_IDEXE)&&~error_prediction&&~_switch_mode;
+    assign stall_PC = ~_switch_mode&(stall_IFID | if_stall)&~error_prediction;
+    assign stall_IDEXE = (stall_EXEMEM || (error_prediction & if_stall))&&~_switch_mode;
+    assign stall_EXEMEM = mem_stall & ~_switch_mode;
     assign stall_MEMWB = 0;
-    assign flush_IFID = (stall_PC & ~stall_IFID) | switch_mode | error_prediction;
-    assign flush_IDEXE = (stall_IFID & ~stall_IDEXE) | switch_mode | error_prediction;
-    assign flush_EXEMEM = (stall_IDEXE & ~stall_EXEMEM) | switch_mode;
-    assign flush_MEMWB = (stall_EXEMEM & ~stall_MEMWB) | switch_mode;
+    assign flush_IFID = (stall_PC & ~stall_IFID) | _switch_mode | error_prediction;
+    assign flush_IDEXE = (stall_IFID & ~stall_IDEXE) | _switch_mode | error_prediction;
+    assign flush_EXEMEM = (stall_IDEXE & ~stall_EXEMEM) | _switch_mode;
+    assign flush_MEMWB = (stall_EXEMEM & ~stall_MEMWB) | _switch_mode;
 
 
 

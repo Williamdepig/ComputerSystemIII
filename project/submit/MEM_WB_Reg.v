@@ -44,7 +44,10 @@ module MEM_WB_Reg(
     output reg [63:0]dmem_wb,
     output reg [63:0]rs1_data_wb,
     output reg [63:0]rs2_data_wb,
-    output reg [63:0]mem_wdata_wb
+    output reg [63:0]mem_wdata_wb,
+
+    input fence_mem,
+    output reg fence_wb
 );
 
     always @(posedge clk) begin
@@ -69,6 +72,8 @@ module MEM_WB_Reg(
             rs1_data_wb <= 0;
             rs2_data_wb <= 0;
             mem_wdata_wb <= 0;
+
+            fence_wb <= 0;
         end
         else if(~stall)begin      //传递所需信号和数据
             if (flush) begin
@@ -92,6 +97,8 @@ module MEM_WB_Reg(
                 rs1_data_wb <= 0;
                 rs2_data_wb <= 0;
                 mem_wdata_wb <= 0;
+
+                fence_wb <= 0;
             end
             else if(except_happen_mem)begin
                 pc_wb <= pc_mem;
@@ -114,6 +121,8 @@ module MEM_WB_Reg(
                 rs1_data_wb <= 0;
                 rs2_data_wb <= 0;
                 mem_wdata_wb <= 0;
+
+                fence_wb <= 0;
             end
             else begin
                 pc_wb <= pc_mem;
@@ -136,6 +145,8 @@ module MEM_WB_Reg(
                 rs1_data_wb <= rs1_data_mem;
                 rs2_data_wb <= rs2_data_mem;
                 mem_wdata_wb <= rw_wdata;
+
+                fence_wb <= fence_mem;
             end
         end
         else begin
@@ -159,6 +170,8 @@ module MEM_WB_Reg(
             rs1_data_wb <= rs1_data_wb;
             rs2_data_wb <= rs2_data_wb;      
             mem_wdata_wb <= mem_wdata_wb;   
+
+            fence_wb <= fence_wb;
         end
     end
 
