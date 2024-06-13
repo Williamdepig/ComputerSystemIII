@@ -41,7 +41,7 @@ module RaceController(
     assign flush_IFID = (stall_PC & ~stall_IFID) | _switch_mode | error_prediction;
     assign flush_IDEXE = (stall_IFID & ~stall_IDEXE) | _switch_mode | error_prediction;
     assign flush_EXEMEM = (stall_IDEXE & ~stall_EXEMEM) | _switch_mode;
-    assign flush_MEMWB = (stall_EXEMEM & ~stall_MEMWB) | switch_mode;
+    assign flush_MEMWB = (stall_EXEMEM & ~stall_MEMWB) | _switch_mode;
 
 
 

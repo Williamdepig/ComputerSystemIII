@@ -137,7 +137,7 @@ module Axi_lite_Core #(
         
         .page_fault_i(page_fault_i),
         .page_fault_d(page_fault_d),
-        .translator_enable(translator_enable),
+        .translator_enable_reg(translator_enable),
 
         .if_mmu(if_mmu_to_cache),
         .wen_mmu(wen_mmu),

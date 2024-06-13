@@ -177,7 +177,6 @@
 `define SCAUSE_COMPRESS   5'b01010
 `define STVAL_COMPRESS    5'b01011
 `define SIP_COMPRESS      5'b01100
-`define SATP_COMPRESS     5'b01101
 
 `define MSTATUS     12'h300
 `define MEDELEG     12'h302
@@ -202,3 +201,6 @@
 `define MCAUSE_COMPRESS    5'b11010
 `define MTVAL_COMPRESS     5'b11011
 `define MIP_COMPRESS       5'b11100
+
+`define NOP 32'h00000013
+`define SFENCE 32'h12000073

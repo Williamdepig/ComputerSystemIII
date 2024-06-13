@@ -57,7 +57,7 @@ module IF_ID_Reg(
                 pc_id <= pc_if;
                 npc_id <= 0;
                 inst_id <= inst_if;
-                valid_id <= (inst_if==`ECALL||inst_if==`EBREAK);//发生了一个很tricky的问题，ecall抛异常是不是要valid，但其他指令抛异常不能valid，呃呃
+                valid_id <= (inst_if==`ECALL||inst_if==`EBREAK);//发生了一个很tricky的问题，ecall抛异常要valid，但其他指令抛异常不能valid，呃呃
 
                 rd_addr_id <= 0;
                 rs1_addr_id <= 0;

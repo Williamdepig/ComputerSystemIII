@@ -213,7 +213,7 @@ module Core (
     );
     BTB btb(
         .clk(clk),
-        .rst(rst | fence_flush),
+        .rst(rst | fence_flush | switch_mode),
         .stall(stall_idexe),
         .pc_if(pc_if),
         .jump_if(jump_if),
@@ -282,7 +282,7 @@ module Core (
         .except_happen_if(except_happen_if),
         .valid_id(valid_id),
 
-        .predict_pc_if(pc_if),
+        .predict_pc_if(predict_pc_if),
         .pc_if(pc_if),
         .npc_if(npc_if),
         .inst_if(inst_if),
@@ -346,6 +346,7 @@ module Core (
         .illegal_id(inst_id[1:0]!=2'b11),//先如此简单判断一下
         .inst_id(inst_id),
         .valid_id(valid_id),
+        .translator_enable(translator_enable),
 
         .except_id(except_id),
         .except_exe(except_exe),
@@ -359,6 +360,7 @@ module Core (
         .valid_id(valid_id & (~fence_id|translator_enable)),
         .except_happen_id(except_happen_id),
         .valid_exe(valid_exe),
+        .translator_enable(translator_enable),
 
         .predict_pc_id(predict_pc_id),
         .pc_id(pc_id),

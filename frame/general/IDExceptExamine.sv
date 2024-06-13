@@ -1,5 +1,5 @@
 `include "ExceptStruct.vh"
-
+`include "Define.vh"
 module IDExceptExamine (
     input clk,
     input rst,
@@ -13,6 +13,7 @@ module IDExceptExamine (
     input        illegal_id,
     input [31:0] inst_id,
     input        valid_id,
+    input        translator_enable,
 
     input  ExceptStruct::ExceptPack except_id,
     output ExceptStruct::ExceptPack except_exe,

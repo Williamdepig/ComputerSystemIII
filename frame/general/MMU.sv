@@ -35,7 +35,7 @@ module MMU #(
     output ren_mmu,
     output [DATA_WIDTH-1:0]   wdata_mmu,
     output [DATA_WIDTH/8-1:0] wmask_mmu,
-    output translator_enable,
+    output reg translator_enable_reg,
     
     input if_stall_from_cache,
     input mem_stall_from_cache,
@@ -55,7 +55,7 @@ module MMU #(
     typedef logic[ADDR_WIDTH-1:0] addr_t;
     typedef logic[DATA_WIDTH-1:0] data_t;
 
-    logic translator_enable_reg;
+    wire translator_enable;
     addr_t ppn_base;
     addr_t pte_i;
     addr_t pte_d;
@@ -125,7 +125,7 @@ module MMU #(
         .rstn   (rstn & ~fence_flush),
 
         .va     (addr_vir),
-        .request((wen_cpu|ren_cpu) & translator_enable & ~(mmio_mtime|mmio_mtimcmp|mmio_disp)),
+        .request((wen_cpu|ren_cpu) & translator_enable),
 
         .pte    (pte_d),
         .stall  (tlb_stall_d),
@@ -198,7 +198,7 @@ module MMU #(
         end
     end
 
-    assign translator_enable = translator_enable_reg;
+    assign translator_enable = translator_enable_reg & ~(mmio_mtime|mmio_mtimcmp|mmio_disp) & ~(priv==2'b11);
     assign ppn_base = {{20{1'b0}} ,satp[PPN_WIDTH-1:0]};
 
     assign pc_phy = ~translator_enable ? pc_vir :
@@ -206,9 +206,6 @@ module MMU #(
                     0;
     assign addr_phy = ~translator_enable ? addr_vir :
                       ren_twu            ? pa_twu :
-                      mmio_mtime         ? `MTIME_BASE :
-                      mmio_mtimcmp       ? `MTIMECMP_BASE :
-                      mmio_disp          ? `DISP_BASE :
                       (wen_cpu|ren_cpu)  ? (pte_pack_d.ppn | {{(ADDR_WIDTH-OFFSET){1'b0}},addr_vir[OFFSET-1:0]}) :
                       0;
 
@@ -226,7 +223,6 @@ module MMU #(
     assign wdata_mmu = wdata_cpu;
     assign wmask_mmu = wmask_cpu;
 
-    wire _page_fault_d;
 
     PageFaultCheck page_fault_check_i(
         .if_request(if_request),
@@ -244,9 +240,8 @@ module MMU #(
         .priv(priv),
         .pte_pack(pte_pack_d),
         .translator_enable(translator_enable),
-        .page_fault(_page_fault_d)
+        .page_fault(page_fault_d)
     );
 
-    assign page_fault_d = _page_fault_d & ~(mmio_mtime|mmio_mtimcmp|mmio_disp);
 
 endmodule

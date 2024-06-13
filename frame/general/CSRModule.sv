@@ -435,7 +435,7 @@ module CSRModule (
     assign compress[`SCAUSE_COMPRESS]     = scause;
     assign compress[`STVAL_COMPRESS]      = stval;
     assign compress[`SIP_COMPRESS]        = sip;
-    assign compress[`SATP_COMPRESS]       = satp;
+    assign compress[13]                   = 64'b0;
     assign compress[14]                   = 64'b0;
     assign compress[15]                   = 64'b0;
     assign compress[`MSTATUS_COMPRESS]    = mstatus;
@@ -455,7 +455,10 @@ module CSRModule (
     assign compress[30]                   = 64'b0;
     assign compress[31]                   = 64'b0;
 
-    assign csr_val_id                     = csr_addr_id[11] ? compress_2[compress_index_2] : compress[compress_index];
+    wire is_satp_r=csr_addr_id==`SATP;
+
+    assign csr_val_id                     = is_satp_r ? satp :
+                                            csr_addr_id[11] ? compress_2[compress_index_2] : compress[compress_index];
 
     assign cosim_interrupt                = interrupt;
     assign cosim_cause                    = except_final.ecause;
